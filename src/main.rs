@@ -9,27 +9,18 @@ fn main() {
 
     let current_date = Utc::now().format("%Y-%m-%d").to_string();
 
-    let new_session = match ssh_connection::new_session("192.168.0.121"){
-        Ok(session) => session,
-        Err(error) => panic!("An error ocurred on trying to create a new session: {:?}", error)
-    };
-
     let username = dotenv::var("USERNAME").expect("Env variable `USERNAME` should be set");
     let password = dotenv::var("PASSWORD").expect("Env variable `PASSWORD` should be set");
-    let authenticated_session = match ssh_connection::authenticate_session(new_session, username.as_str(), password.as_str()) {
-        Ok(auth_session) => auth_session,
-        Err(error) => panic!("An error ocurred on trying to authenticate: {:?}", error)
-    };
-
-    let mut channel = match ssh_connection::new_channel(authenticated_session) {
-        Ok(channel) => channel,
-        Err(error) => panic!("Error on creating the channel session: {:?}", error)
-    };
+    let session = ssh_connection::new_authenticated_session(
+        "192.168.0.121",
+        username.as_str(),
+        password.as_str()
+    ).unwrap();
 
     let mut file = match fs::File::open("./log-informations.txt") {
         Ok(file) => file,
         Err(_) => match fs::File::create("./log-informations.txt") {
-            Ok(file) => file,
+            Ok(_) => fs::File::open("./log-informations.txt").unwrap(),
             Err(error) => panic!("Error: {:?}", error)
         }
     };
@@ -38,19 +29,37 @@ fn main() {
     file.read_to_string(&mut file_content).unwrap();
 
     let current_day_log_lines_count = match ssh_connection::execute_command(
-        &mut channel,
+        session.clone(),
         "wc -l < /var/www/html/interno/cron-job/notifications/negativas/log/negativas-2023-05-31.log"
     ) {
         Ok(count) => count,
         Err(error) => panic!("Error on executing the command or reading the output: {:#?}", error)
     };
 
-    if file_content.is_empty() {
-        
+    let mut alerts: String = String::new();
+    if file_content.is_empty() == true {
+        alerts = match ssh_connection::execute_command(
+            session.clone(),
+            "cat /var/www/html/interno/cron-job/notifications/negativas/log/negativas-2023-05-31.log | grep ALERT"
+        ) {
+            Ok(count) => count,
+            Err(error) => panic!("Error on executing the command or reading the output: {:#?}", error)
+        };
     }
 
+    if alerts.is_empty() == false {
+        match ssh_connection::execute_command(
+            session.clone(),
+            "wsl-notify-send.exe --category $WSL_DISTRO_NAME 'New alert detected'"
+        ) {
+            Ok(count) => count,
+            Err(error) => panic!("Error on executing the command or reading the output: {:#?}", error)
+        };
+    }
+
+    file.write(current_day_log_lines_count.as_bytes()).unwrap();
+
     println!("Alerts: {}", current_day_log_lines_count);
-    channel.wait_close().unwrap();
 
     // let (mut remote_file, stat) = sess.scp_recv(Path::new(dotenv::var("LOG_PATH").unwrap().as_str()))?;
     // println!("Remote file stats: {}", stat.size());
