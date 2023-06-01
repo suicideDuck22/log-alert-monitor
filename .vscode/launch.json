@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "sourceLanguages": ["rust"],
             "type": "lldb",
             "request": "launch",
             "name": "Debug unit tests in library 'log-alert-monitor'",

@@ -22,7 +22,6 @@ pub fn execute_command(session: Session, command: &str) -> Result<String, Box<dy
     channel.read_to_string(&mut command_output)?;
 
     close_channel(channel)?;
-
     Ok(command_output)
 }
 
