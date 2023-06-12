@@ -1,21 +1,18 @@
 # log-alert-monitor
 
 ## About
----
 A very very simple app to run inside WSL to monitor your logs inside a server using SSH.
+
 ## WIP
----
 This monitor is far from been done. I'm current only learning the language and made this to put some knowladge in practice.
 
 ## Premises
----
 The log file on the server need to be the creation data on the name. Like: my-app-YYYY-MM-DD.log;
 Because the monitor will replace the YYYY-MM-DD with the current date to search inside the most recent log file.
 <br>
 At this point, the monitor use SSH with Username AND Password to access remote server. This is inserted on .env file.
 
 ## Parameters
----
 - server_address &rarr; IP Address;
 - server_name &rarr; Server identifier to the notification;
 - application_name &rarr; Application identifier to the notification;
@@ -29,7 +26,6 @@ So on the next call to the server, the monitor know from where him need to start
 This monitor use the [wsl-notify-send](https://github.com/stuartleeks/wsl-notify-send) repository to send notification to the windows from WSL.
 
 ## Setting up
----
 I will do a script to make this process more easy, but you can start building this project locally using like cargo build.
 Move the binary file to a folder of your preference.
 Create a folder called remote-servers-infos on this folder, and a .env file containing your credentials.
