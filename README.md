@@ -47,6 +47,8 @@ Unzip and put the .exe on a folder of your user. Add the path to this folder on 
 
 Now you will be able to create a cron, who execute the script on WSL passing the parameter mencioneds on this readme, and stay monitoring your logs.
 
+At this point I only used ZSH as my Shell.
+
 ---
 
 Thanks.
