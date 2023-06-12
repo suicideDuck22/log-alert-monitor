@@ -2,22 +2,22 @@ use std::error::Error;
 use crate::ssh_connection;
 use ssh2::Session;
 
-pub fn get_lines_quantity(session: Session) -> Result<String, Box<dyn Error>> {
-    let command = "wc -l < /var/www/html/interno/cron-job/notifications/negativas/log/negativas-2023-06-01.log";
-    let lines_quantity = ssh_connection::execute_command(session, command)?;
+pub fn get_lines_quantity(session: Session, log_full_path: &str) -> Result<String, Box<dyn Error>> {
+    let command = format!("wc -l < {}", log_full_path);
+    let lines_quantity = ssh_connection::execute_command(session, command.as_str())?;
     Ok(lines_quantity)
 }
 
-pub fn read_all_searching_alerts(session: Session) -> Result<String, Box<dyn Error>> {
-    let command = "cat /var/www/html/interno/cron-job/notifications/negativas/log/negativas-2023-06-01.log";
-    let alerts = ssh_connection::execute_command(session, command)?;
+pub fn read_all_searching_alerts(session: Session, log_full_path: &str) -> Result<String, Box<dyn Error>> {
+    let command = format!("cat {} | grep ALERT", log_full_path);
+    let alerts = ssh_connection::execute_command(session, command.as_str())?;
     Ok(alerts)
 }
 
-pub fn read_since_searching_alerts(session: Session, past_line_quantity: &str) -> Result<String, Box<dyn Error>> {
-    let current_lines_quantity = get_lines_quantity(session.clone())?;
+pub fn read_since_searching_alerts(session: Session, past_line_quantity: &str, log_full_path: &str) -> Result<String, Box<dyn Error>> {
+    let current_lines_quantity = get_lines_quantity(session.clone(), &log_full_path)?;
     let read_since = current_lines_quantity.trim().parse::<u32>()? - past_line_quantity.parse::<u32>()?;
-    let command = format!("tail -n {} /var/www/html/interno/cron-job/notifications/negativas/log/negativas-2023-06-01.log", read_since);
+    let command = format!("tail -n {} {} | grep ALERT", read_since, &log_full_path);
     let alerts = ssh_connection::execute_command(session, command.as_str())?;
     Ok(alerts)
 }
