@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn Error>>{
     let current_date = Utc::now().format("%Y-%m-%d").to_string();
     args.logs_path = args.logs_path.replace("YYYY-MM-DD", &current_date);
 
-    let session = ssh_connection::new_authenticated_session(
+    let session = ssh_connection::session::new_authenticated_session(
         &args.server_address,
         &auth_data.username,
         &auth_data.password
@@ -53,38 +53,34 @@ fn main() -> Result<(), Box<dyn Error>>{
     };
 
     let info_file_content = info_file::get_content(&mut info_file);
-    let current_day_log_lines_count = match remote_log::get_lines_quantity(
+
+    let current_day_log_lines_count = remote_log::get_lines_quantity(
         session.clone(),
         &args.logs_path
-    ) {
-        Ok(quantity) => quantity,
-        Err(error) => panic!("Error on executing the command or reading the output: {:#?}", error)
-    };
+    )?;
 
-    let mut alerts: String = String::new();
+    let mut remote_log_alerts: String = String::new();
     if info_file_content.is_empty() == true {
-        match remote_log::read_all_searching_alerts(session.clone(), &args.logs_path) {
-            Ok(remote_alerts) => alerts.push_str(remote_alerts.as_str()),
-            Err(error) => panic!("Error on executing the command or reading the output: {:#?}", error)
-        };
+        let remote_alerts = remote_log::read_all(session.clone(), &args.logs_path)?;
+        remote_log_alerts.push_str(remote_alerts.as_str());
     } else {
         let (date, info_file_lines) = info_file::parse_infos(&info_file_content).unwrap();
         if date != current_date {
-            match remote_log::read_all_searching_alerts(session.clone(), &args.logs_path) {
-                Ok(remote_alerts) => alerts.push_str(remote_alerts.as_str()),
-                Err(error) => panic!("Error on executing the command or reading the output: {:#?}", error)
-            };
+            let remote_alerts = remote_log::read_all(session.clone(), &args.logs_path)?;
+            remote_log_alerts.push_str(remote_alerts.as_str());
         } else {
-            match remote_log::read_since_searching_alerts(session, info_file_lines, &args.logs_path) {
-                Ok(remote_alerts) => alerts.push_str(&remote_alerts),
-                Err(error) => panic!("Error on executing the command or reading the output: {:#?}", error)
-            }
+            let remote_alerts = remote_log::read_part(session, info_file_lines, &args.logs_path)?;
+            remote_log_alerts.push_str(&remote_alerts);
         }
     }
 
-    if alerts.is_empty() == false {
+    if remote_log_alerts.is_empty() == false {
         let notification_message = format!("New alert detected at {} application {}", &args.server_name, &args.application_name);
         Command::new("wsl-notify-send.exe").args(["--category", "$WSL_DISTRO_NAME", &notification_message]).spawn().unwrap();
+    }
+
+    if current_day_log_lines_count.is_empty() == true {
+        return Ok(())
     }
 
     match info_file::insert_infos(&args.server_address, current_day_log_lines_count, &args.application_name) {
